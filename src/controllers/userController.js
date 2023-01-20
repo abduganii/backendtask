@@ -13,29 +13,40 @@ export const registor = async (req, res) => {
       }
   
       const { name, email, password} = req.body;
-      const salt = await bcrypt.genSalt(10);
-      const passwordHash = await bcrypt.hash(password, salt);
+
+        const filterEmail = await UserModel.find({email:email})
       
-      const doc = new UserModel({
-          name: name,
-          email: email,
-          passwordHash: passwordHash
-      })
-      const user = await doc.save()
-  
-      const token = jwt.sign(
-          {
-              _id: user._id,
-          },
-            "secretno",
-          {
-              expiresIn:"30d"
-          }
-      )
+        if (!filterEmail.length) {
+            const salt = await bcrypt.genSalt(10);
+            const passwordHash = await bcrypt.hash(password, salt);
+            
+            const doc = new UserModel({
+                name: name,
+                email: email,
+                passwordHash: passwordHash
+            })
+            const user = await doc.save()
         
-      res.send({user,token})
+            const token = jwt.sign(
+                {
+                    _id: user._id,
+                },
+                    "secretno",
+                {
+                    expiresIn:"30d"
+                }
+            )
+                
+            res.send({user,token})
+        } else {
+            res.send({
+                status: 404,
+                message: "email is already authorized"
+            })
+        }
+
+       
     } catch (error) {
-          console.log(error)
         res.status(500).send({
             status: 500,
             message: "Registration failed "
@@ -102,7 +113,6 @@ export const getUser  =  async(req, res) => {
         })
     }
 }
-
 
 export const getMe  =  async(req, res) => {
     try {
@@ -207,7 +217,7 @@ export const removeAll = async (req, res) => {
     try {   
       (await UserModel.find()).map(e => {
             if (e.id !== req.userId) {
-                 UserModel.findByIdAndRemove({
+                 UserModel.findByIdAndDelete({
                     _id:e.id,
                 },
                 (err, doc) => {
@@ -231,7 +241,7 @@ export const removeAll = async (req, res) => {
         })
     
     } catch (error) {
-        console.log(error)
+
         res.status(500).send({
             status: 500,
             message: "Failed to delete"
@@ -240,18 +250,16 @@ export const removeAll = async (req, res) => {
 }
 export const BlockAll = async (req, res) => {
     try { 
-      (await UserModel.find()).map(e => {
+        let idArr = [];
+        (await UserModel.find()).forEach(e => {
+          console.log(e.id,req.userId)
           if (e.id !== req.userId) {
-                UserModel.findOneAndUpdate(
-                    {
-                        _id:e.id,
-                    }, {
-                        blocked: true
-                    }
-                )
-                
+                idArr.push(e.id)
           }
         })
+        await UserModel.updateMany({_id: {$in: idArr}}, 
+            {blocked: true}
+        )
         res.json({
             success:true
         })
