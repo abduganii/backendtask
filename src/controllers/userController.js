@@ -39,8 +39,8 @@ export const registor = async (req, res) => {
 
        
     } catch (error) {
-        res.status(500).send({
-            status: 500,
+        res.status(404).send({
+            status:404,
             message: "Registration failed "
         });
     }
