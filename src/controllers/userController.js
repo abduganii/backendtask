@@ -14,36 +14,28 @@ export const registor = async (req, res) => {
   
       const { name, email, password} = req.body;
 
-        const filterEmail = await UserModel.find({email:email})
-      
-        if (!filterEmail.length) {
-            const salt = await bcrypt.genSalt(10);
-            const passwordHash = await bcrypt.hash(password, salt);
+
+        const salt = await bcrypt.genSalt(10);
+        const passwordHash = await bcrypt.hash(password, salt);
             
-            const doc = new UserModel({
-                name: name,
-                email: email,
-                passwordHash: passwordHash
-            })
-            const user = await doc.save()
-        
-            const token = jwt.sign(
-                {
-                    _id: user._id,
-                },
-                    "secretno",
-                {
-                    expiresIn:"30d"
-                }
-            )
+        const doc = new UserModel({
+            name: name,
+            email: email,
+            passwordHash: passwordHash
+        })
+        const user = await doc.save()
+    
+        const token = jwt.sign(
+            {
+                _id: user._id,
+            },
+                "secretno",
+            {
+                expiresIn:"30d"
+            }
+        )
                 
-            res.send({user,token})
-        } else {
-            res.send({
-                status: 404,
-                message: "email is already authorized"
-            })
-        }
+        res.send({user,token})
 
        
     } catch (error) {
@@ -215,29 +207,17 @@ export const removePost = async (req, res) => {
 }
 export const removeAll = async (req, res) => {
     try {   
-      (await UserModel.find()).map(e => {
+        let idArr = [];
+        (await UserModel.find()).forEach(e => {
+            console.log(e.id,req.userId)
             if (e.id !== req.userId) {
-                 UserModel.findByIdAndDelete({
-                    _id:e.id,
-                },
-                (err, doc) => {
-                    if (err) {
-                        console.log(error)
-                        return res.status(500).send({
-                            status: 500,
-                            message: "Unable to remove article"
-                        });
-                    }
-                    if(!doc){
-                        return res.status(404).json({
-                            message:"Article not found"
-                        })
-                    }
-                    res.send({
-                        seccess: true
-                    })
-                })
+                  idArr.push(e.id)
             }
+          })
+          await UserModel.deleteMany({_id: {$in: idArr}}
+        )
+        res.json({
+            success:true
         })
     
     } catch (error) {
